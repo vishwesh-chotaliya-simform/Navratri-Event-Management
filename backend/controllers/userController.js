@@ -1,25 +1,42 @@
 const User = require("../models/User");
 const Event = require("../models/Event");
+const Booking = require("../models/Booking");
 const QRCode = require("qrcode");
 const { sendQRCodeMail } = require("../utils/sendMail");
 
 // Register a new user
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, phone, event } = req.body;
-    // Check if user already registered for this event
-    const existingUser = await User.findOne({ email, event });
-    if (existingUser)
-      return res
-        .status(400)
-        .json({ message: "You have already registered for this event." });
+    const { name, email, phone, event, numTickets } = req.body;
+    // Find or create user
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = new User({ name, email, phone });
+      await user.save();
+    }
+    // Create booking with form-entered name and phone
+    const booking = new Booking({
+      user: user._id,
+      event,
+      name, // Use form value
+      phone, // Use form value
+      numTickets,
+    });
+    await booking.save();
 
-    const user = new User({ name, email, phone, event });
-    // Generate QR code
-    const qrData = `PASS:${email}`;
+    // Generate QR code with booking info
+    const qrData = JSON.stringify({
+      bookingId: booking._id,
+      email,
+      event,
+      numTickets,
+      name, // Include name in QR
+      phone, // Include phone in QR
+    });
     const qrCode = await QRCode.toDataURL(qrData);
-    user.passQRCode = qrCode;
-    await user.save();
+
+    booking.passQRCode = qrCode;
+    await booking.save();
 
     // Fetch event details
     const eventObj = await Event.findById(event);
@@ -75,14 +92,20 @@ exports.listUsers = async (req, res) => {
 // Check-in user (admin only)
 exports.checkInUser = async (req, res) => {
   try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
-    if (user.isCheckedIn)
-      return res.status(400).json({ message: "User already checked in" });
+    const { qrData } = req.body; // qrData is the decoded QR code string
+    let bookingInfo;
+    try {
+      bookingInfo = JSON.parse(qrData);
+    } catch {
+      return res.status(400).json({ message: "Invalid QR code format" });
+    }
+    const booking = await Booking.findById(bookingInfo.bookingId);
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    if (booking.isCheckedIn)
+      return res.status(400).json({ message: "Already checked in" });
 
-    user.isCheckedIn = true;
-    await user.save();
+    booking.isCheckedIn = true;
+    await booking.save();
     res.json({ message: "Check-in successful" });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
@@ -92,38 +115,68 @@ exports.checkInUser = async (req, res) => {
 // Send QR code to user (self-service)
 exports.sendQRCodeToUser = async (req, res) => {
   try {
-    const { email, eventId } = req.body;
-    const user = await User.findOne({ email, event: eventId });
-    if (!user)
-      return res
-        .status(404)
-        .json({ message: "User not found for this event." });
-    if (user.isCheckedIn)
+    const { bookingId } = req.body;
+    // Find booking by ID
+    const booking = await Booking.findById(bookingId)
+      .populate("user")
+      .populate("event");
+    if (!booking)
+      return res.status(404).json({ message: "Booking not found." });
+
+    if (booking.isCheckedIn)
       return res
         .status(400)
         .json({ message: "User already checked in for this event." });
 
     // Use existing QR code if present
-    let qrCode = user.passQRCode;
+    let qrCode = booking.passQRCode;
     if (!qrCode) {
-      const qrData = `PASS:${user.email}`;
+      const qrData = JSON.stringify({
+        bookingId: booking._id,
+        email: booking.user.email,
+        event: booking.event._id,
+        numTickets: booking.numTickets,
+      });
       qrCode = await QRCode.toDataURL(qrData);
-      user.passQRCode = qrCode;
-      await user.save();
+      booking.passQRCode = qrCode;
+      await booking.save();
     }
-
-    // Fetch event details
-    const event = await Event.findById(user.event);
 
     // Send QR code via email
     await sendQRCodeMail({
-      to: user.email,
-      subject: `Your Event Pass for ${event.name}`,
+      to: booking.user.email,
+      subject: `Your Event Pass for ${booking.event.name}`,
       qrCode,
-      event,
+      event: booking.event,
     });
 
     res.json({ message: "Ticket resent to your email address." });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// List all bookings (admin only)
+exports.listBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find()
+      .populate("user", "name email phone")
+      .populate("event", "name date location");
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// List bookings for logged-in user
+exports.userBookings = async (req, res) => {
+  try {
+    const userId = req.admin.id;
+    const bookings = await Booking.find({ user: userId }).populate(
+      "event",
+      "name date location"
+    );
+    res.json(bookings);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

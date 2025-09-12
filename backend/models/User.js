@@ -2,10 +2,9 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true }, // remove unique: true
+  email: { type: String, required: true },
   phone: { type: String, required: true },
   passQRCode: { type: String },
-  isCheckedIn: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   role: {
     type: String,
@@ -13,6 +12,7 @@ const userSchema = new mongoose.Schema({
     default: "user",
   },
   event: { type: mongoose.Schema.Types.ObjectId, ref: "Event" },
+  password: { type: String },
 });
 
 // Compound unique index for email + event

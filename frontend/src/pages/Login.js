@@ -9,29 +9,30 @@ import {
   TextField,
   Button,
   Alert,
+  Box,
+  Divider,
   CircularProgress,
 } from "@mui/material";
 import { motion } from "framer-motion";
 
-const AdminLogin = () => {
-  const [form, setForm] = useState({ username: "", password: "" });
+const Login = () => {
+  const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
 
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const res = await axios.post("/api/admin/login", form);
-      login(res.data.token, "admin"); // <-- pass "admin" as second argument
-      navigate("/admin");
+      const res = await axios.post("/api/auth/login", form);
+      login(res.data.token);
+      setTimeout(() => navigate("/events"), 1000); // Smooth redirect
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
       setLoading(false);
@@ -45,20 +46,46 @@ const AdminLogin = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
+        <Box
+          sx={{
+            textAlign: "center",
+            py: 2,
+            mb: 2,
+            color: "primary.main",
+          }}
+        >
+          <img
+            src="/logo.png"
+            alt="Logo"
+            style={{ height: 48, marginBottom: 8 }}
+          />
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: 700, color: "primary.main" }}
+          >
+            Welcome to Navratri Event Registration
+          </Typography>
+          <Divider sx={{ my: 1 }} />
+          <Typography sx={{ fontSize: 16, color: "text.secondary" }}>
+            Celebrate with us! Register for your favorite events.
+          </Typography>
+        </Box>
+        <Paper elevation={3} sx={{ p: 4, mt: 2 }}>
           <Typography variant="h4" gutterBottom>
-            Admin Login
+            Login
           </Typography>
           <form onSubmit={handleSubmit}>
             <TextField
-              label="Username"
-              name="username"
-              value={form.username}
+              label="Email"
+              name="email"
+              type="email"
+              value={form.email}
               onChange={handleChange}
               required
               fullWidth
               margin="normal"
-              placeholder="Enter username"
+              placeholder="Enter your email"
+              helperText="We'll never share your email."
             />
             <TextField
               label="Password"
@@ -69,7 +96,7 @@ const AdminLogin = () => {
               required
               fullWidth
               margin="normal"
-              placeholder="Enter password"
+              placeholder="Enter your password"
             />
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
@@ -87,23 +114,23 @@ const AdminLogin = () => {
           </form>
           <Button
             component={Link}
-            to="/"
+            to="/signup"
             variant="text"
             color="secondary"
             fullWidth
             sx={{ mt: 2 }}
           >
-            User Login
+            Don't have an account? Sign Up
           </Button>
           <Button
             component={Link}
-            to="/signup"
+            to="/admin/login"
             variant="text"
             color="secondary"
             fullWidth
             sx={{ mt: 1 }}
           >
-            User Sign Up
+            Admin Login
           </Button>
           {error && (
             <motion.div
@@ -122,4 +149,4 @@ const AdminLogin = () => {
   );
 };
 
-export default AdminLogin;
+export default Login;

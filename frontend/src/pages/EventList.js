@@ -5,14 +5,18 @@ import {
   Card,
   CardContent,
   CardActions,
+  CardMedia,
   Grid,
   Button,
-  Avatar,
   Typography,
   Container,
   Alert,
+  Chip,
+  Box,
 } from "@mui/material";
 import EventIcon from "@mui/icons-material/Event";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import { motion } from "framer-motion";
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
@@ -47,7 +51,7 @@ const EventList = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h3" gutterBottom align="center" sx={{ mb: 4 }}>
         Upcoming Events
       </Typography>
       {error && (
@@ -55,62 +59,82 @@ const EventList = () => {
           {error}
         </Alert>
       )}
-      <Grid container spacing={3}>
-        {events.map((event) => (
+      <Grid container spacing={4}>
+        {events.map((event, index) => (
           <Grid item xs={12} sm={6} md={4} key={event._id}>
-            <Card
-              elevation={4}
-              sx={{
-                borderRadius: 3,
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                border: "3px solid",
-                borderImage:
-                  "linear-gradient(90deg, #d72660 60%, #fbb13c 100%) 1",
-              }}
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
             >
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Avatar sx={{ bgcolor: "primary.main", mb: 2 }}>
-                  <EventIcon />
-                </Avatar>
-                <Typography variant="h6" color="primary">
-                  <Link
-                    to={`/events/${event._id}`}
-                    style={{ textDecoration: "none", color: "inherit" }}
-                  >
-                    {event.name}
-                  </Link>
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  {event.description}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Date:</strong>{" "}
-                  {new Date(event.date).toLocaleDateString()}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Location:</strong> {event.location}
-                </Typography>
-              </CardContent>
-              {isAdmin && (
-                <CardActions sx={{ justifyContent: "center" }}>
-                  <Link to={`/admin/edit-event/${event._id}`}>
-                    <Button variant="outlined" size="small" sx={{ mr: 1 }}>
+              <Card
+                elevation={4}
+                sx={{
+                  borderRadius: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                  transition: "transform 0.3s",
+                  "&:hover": { transform: "translateY(-8px)" },
+                }}
+              >
+                <CardMedia
+                  component="div"
+                  sx={{
+                    height: 140,
+                    bgcolor: "primary.main",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <EventIcon sx={{ fontSize: 60, color: "white" }} />
+                </CardMedia>
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Typography variant="h6" color="primary" gutterBottom>
+                    <Link
+                      to={`/events/${event._id}`}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      {event.name}
+                    </Link>
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    {event.description}
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                    <LocationOnIcon sx={{ mr: 1, fontSize: 18 }} />
+                    <Typography variant="body2">{event.location}</Typography>
+                  </Box>
+                  <Chip
+                    label={new Date(event.date).toLocaleDateString()}
+                    color="secondary"
+                    size="small"
+                  />
+                </CardContent>
+                {isAdmin && (
+                  <CardActions sx={{ justifyContent: "center", p: 2 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      component={Link}
+                      to={`/admin/edit-event/${event._id}`}
+                      sx={{ mr: 1 }}
+                    >
                       Edit
                     </Button>
-                  </Link>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    size="small"
-                    onClick={() => handleDelete(event._id)}
-                  >
-                    Delete
-                  </Button>
-                </CardActions>
-              )}
-            </Card>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      onClick={() => handleDelete(event._id)}
+                    >
+                      Delete
+                    </Button>
+                  </CardActions>
+                )}
+              </Card>
+            </motion.div>
           </Grid>
         ))}
       </Grid>

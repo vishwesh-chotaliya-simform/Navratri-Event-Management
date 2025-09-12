@@ -23,12 +23,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import EmailIcon from "@mui/icons-material/Email";
 
 const AdminDashboard = () => {
-  const [users, setUsers] = useState([]);
-  const [events, setEvents] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [error, setError] = useState("");
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [qrCode, setQrCode] = useState("");
-  const [qrUser, setQrUser] = useState(null);
+  const [qrBooking, setQrBooking] = useState(null);
   const [resendMsg, setResendMsg] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const navigate = useNavigate();
@@ -40,49 +39,29 @@ const AdminDashboard = () => {
       return;
     }
     axios
-      .get("/api/users", { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => setUsers(res.data))
+      .get("/api/users/bookings", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setBookings(res.data))
       .catch((err) =>
-        setError(err.response?.data?.message || "Failed to fetch users")
+        setError(err.response?.data?.message || "Failed to fetch bookings")
       );
-    axios
-      .get("/api/events")
-      .then((res) => setEvents(res.data))
-      .catch(() => setEvents([]));
   }, [navigate]);
 
-  // Helper to get event name by event id
-  const getEventName = (eventId) => {
-    const event = events.find((ev) => ev._id === eventId);
-    return event ? event.name : "-";
-  };
-
-  // Only fetch and show QR code, do not send email
-  const handleShowQR = async (user) => {
-    setQrUser(user);
-    setQrCode("");
+  const handleShowQR = (booking) => {
+    setQrBooking(booking);
+    setQrCode(booking.passQRCode || "");
     setResendMsg("");
     setQrDialogOpen(true);
-    try {
-      const res = await axios.get(`/api/users/${user.email}/qrcode`, {
-        params: { preview: true }, // Optionally, you can add a query param to indicate preview
-      });
-      setQrCode(res.data.qrCode);
-    } catch (err) {
-      setQrCode("");
-      setError(err.response?.data?.message || "Failed to fetch QR code");
-    }
   };
 
-  // Resend ticket email
   const handleResendTicket = async () => {
-    if (!qrUser) return;
+    if (!qrBooking) return;
     setResendLoading(true);
     setResendMsg("");
     try {
       const res = await axios.post("/api/users/send-qrcode", {
-        email: qrUser.email,
-        eventId: qrUser.event,
+        bookingId: qrBooking._id, // <-- send bookingId only
       });
       setResendMsg(res.data.message || "Ticket resent successfully.");
     } catch (err) {
@@ -97,16 +76,16 @@ const AdminDashboard = () => {
   const handleCloseDialog = () => {
     setQrDialogOpen(false);
     setQrCode("");
-    setQrUser(null);
+    setQrBooking(null);
     setResendMsg("");
     setResendLoading(false);
   };
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="lg">
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Admin Dashboard
+          Admin Dashboard - Bookings
         </Typography>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -117,42 +96,58 @@ const AdminDashboard = () => {
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
-              <TableCell>Email</TableCell>
               <TableCell>Phone</TableCell>
+              <TableCell>Email</TableCell>
               <TableCell>Event</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Location</TableCell>
               <TableCell>QR Code</TableCell>
+              <TableCell>Checked In</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.map((user) => (
-              <TableRow key={user._id}>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>{user.phone}</TableCell>
+            {bookings.map((booking) => (
+              <TableRow key={booking._id}>
+                <TableCell>{booking.name}</TableCell>
+                <TableCell>{booking.phone}</TableCell>
+                <TableCell>{booking.user?.email}</TableCell>
                 <TableCell>
                   <Link
-                    to={`/events/${user.event}`}
-                    style={{
-                      textDecoration: "none",
-                      color: "#d72660",
-                      fontWeight: 600,
-                    }}
+                    to={`/events/${booking.event?._id}`}
+                    style={{ textDecoration: "none", color: "inherit" }}
                   >
-                    {getEventName(user.event)}
+                    {booking.event?.name}
                   </Link>
                 </TableCell>
                 <TableCell>
-                  {!user.isCheckedIn ? (
+                  {booking.event
+                    ? new Date(booking.event.date).toLocaleDateString()
+                    : "-"}
+                </TableCell>
+                <TableCell>{booking.event?.location}</TableCell>
+                <TableCell>
+                  {booking.passQRCode ? (
                     <IconButton
                       color="primary"
-                      onClick={() => handleShowQR(user)}
+                      onClick={() => handleShowQR(booking)}
                       title="Show QR"
                     >
                       <QrCodeIcon />
                     </IconButton>
                   ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Not generated
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {booking.isCheckedIn ? (
                     <Typography variant="body2" color="success.main">
-                      Checked In
+                      Yes
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="error.main">
+                      No
                     </Typography>
                   )}
                 </TableCell>
@@ -160,6 +155,9 @@ const AdminDashboard = () => {
             ))}
           </TableBody>
         </Table>
+        {bookings.length === 0 && (
+          <Typography sx={{ mt: 2 }}>No bookings found.</Typography>
+        )}
       </Paper>
       <Dialog
         open={qrDialogOpen}
@@ -168,7 +166,7 @@ const AdminDashboard = () => {
         fullWidth
       >
         <DialogTitle>
-          {qrUser ? `QR Code for ${qrUser.name}` : "QR Code"}
+          {qrBooking ? `QR Code for ${qrBooking.user?.name}` : "QR Code"}
           <IconButton
             aria-label="close"
             onClick={handleCloseDialog}
@@ -190,16 +188,18 @@ const AdminDashboard = () => {
                 alt="QR Code"
                 style={{ width: 200, height: 200, marginBottom: 16 }}
               />
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<EmailIcon />}
-                onClick={handleResendTicket}
-                disabled={resendLoading}
-                sx={{ mb: 2 }}
-              >
-                {resendLoading ? "Resending..." : "Resend Ticket"}
-              </Button>
+              {qrBooking && !qrBooking.isCheckedIn && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  startIcon={<EmailIcon />}
+                  onClick={handleResendTicket}
+                  disabled={resendLoading}
+                  sx={{ mb: 2 }}
+                >
+                  {resendLoading ? "Resending..." : "Resend Ticket"}
+                </Button>
+              )}
               {resendMsg && (
                 <Alert
                   severity={
