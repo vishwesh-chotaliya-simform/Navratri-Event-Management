@@ -1,37 +1,132 @@
-import React, { useState, useRef } from "react";
+import React, { useRef, useEffect, useState } from "react";
+import { Container, Paper, Typography, Alert, Button } from "@mui/material";
 import axios from "axios";
-import { QrReader } from "@blackbox-vision/react-qr-reader";
-import { Container, Paper, Typography, Alert } from "@mui/material";
+import { Html5Qrcode } from "html5-qrcode";
+import "./CheckIn.css";
 
 const CheckIn = () => {
+  const qrRef = useRef(null);
   const [scanResult, setScanResult] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [checkedIn, setCheckedIn] = useState(false);
-  const checkedInRef = useRef(false);
+  const [scanner, setScanner] = useState(null);
+  const scanProcessedRef = useRef(false);
 
-  const handleScan = async (result) => {
-    if (checkedInRef.current) return;
-    if (result && result.startsWith("PASS:")) {
-      checkedInRef.current = true;
-      setCheckedIn(true);
-      setScanResult(result);
+  useEffect(() => {
+    const html5Qr = new Html5Qrcode("qr-reader");
+    setScanner(html5Qr);
+    scanProcessedRef.current = false;
+
+    html5Qr.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: 320,
+      },
+      async (decodedText) => {
+        if (
+          !scanProcessedRef.current &&
+          decodedText &&
+          decodedText.startsWith("PASS:")
+        ) {
+          scanProcessedRef.current = true;
+          setScanResult(decodedText);
+          setCheckedIn(true);
+          const email = decodedText.replace("PASS:", "");
+          if (html5Qr.getState() === 2) {
+            await html5Qr.stop();
+          }
+          try {
+            const res = await axios.post(
+              "/api/users/checkin",
+              { email },
+              {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+              }
+            );
+            setMessage(res.data.message);
+            setError(""); // Only clear error on success
+          } catch (err) {
+            setMessage(""); // Only clear message on error
+            setError(err.response?.data?.message || "Check-in failed");
+          }
+        }
+      },
+      (scanError) => {
+        if (scanError && scanError.toLowerCase().includes("camera")) {
+          setError("Camera error: " + scanError);
+        }
+      }
+    );
+
+    return () => {
+      if (html5Qr.getState && html5Qr.getState() === 2) {
+        html5Qr
+          .stop()
+          .catch(() => {})
+          .finally(() => {
+            html5Qr.clear()?.catch(() => {});
+          });
+      } else {
+        html5Qr.clear()?.catch(() => {});
+      }
+    };
+  }, []);
+
+  const handleRestart = () => {
+    if (scanner) {
+      setScanResult("");
       setMessage("");
       setError("");
-      const email = result.replace("PASS:", "");
-      try {
-        const res = await axios.post(
-          "/api/users/checkin",
-          { email },
+      setCheckedIn(false);
+      scanProcessedRef.current = false;
+      if (scanner.getState() !== 2) {
+        scanner.start(
+          { facingMode: "environment" },
           {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
+            fps: 10,
+            qrbox: 320,
+          },
+          async (decodedText) => {
+            if (
+              !scanProcessedRef.current &&
+              decodedText &&
+              decodedText.startsWith("PASS:")
+            ) {
+              scanProcessedRef.current = true;
+              setScanResult(decodedText);
+              setCheckedIn(true);
+              const email = decodedText.replace("PASS:", "");
+              if (scanner.getState() === 2) {
+                await scanner.stop();
+              }
+              try {
+                const res = await axios.post(
+                  "/api/users/checkin",
+                  { email },
+                  {
+                    headers: {
+                      Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                  }
+                );
+                setMessage(res.data.message);
+                setError("");
+              } catch (err) {
+                setMessage("");
+                setError(err.response?.data?.message || "Check-in failed");
+              }
+            }
+          },
+          (scanError) => {
+            if (scanError && scanError.toLowerCase().includes("camera")) {
+              setError("Camera error: " + scanError);
+            }
           }
         );
-        setMessage(res.data.message);
-      } catch (err) {
-        setError(err.response?.data?.message || "Check-in failed");
       }
     }
   };
@@ -43,25 +138,17 @@ const CheckIn = () => {
           User Check-In (Scan QR Code)
         </Typography>
         <div
+          id="qr-reader"
+          ref={qrRef}
           style={{
             width: 320,
             height: 320,
             margin: "0 auto",
             borderRadius: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#222", // optional, for contrast
+            overflow: "hidden",
+            background: "#000",
           }}
-        >
-          <QrReader
-            onResult={(result, error) => {
-              if (!!result) handleScan(result?.text);
-            }}
-            constraints={{ facingMode: "environment" }}
-            style={{ width: "100%", height: "100%" }}
-          />
-        </div>
+        />
         {scanResult && (
           <Typography sx={{ mt: 2 }}>Scanned: {scanResult}</Typography>
         )}
@@ -76,9 +163,9 @@ const CheckIn = () => {
           </Alert>
         )}
         {checkedIn && (
-          <Typography sx={{ mt: 3, color: "#1976d2" }}>
-            You have been checked in. Please close this page.
-          </Typography>
+          <Button variant="contained" sx={{ mt: 2 }} onClick={handleRestart}>
+            Scan Another
+          </Button>
         )}
       </Paper>
     </Container>
