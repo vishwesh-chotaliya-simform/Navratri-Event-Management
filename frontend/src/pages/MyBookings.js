@@ -50,9 +50,12 @@ const MyBookings = () => {
     setSuccess("");
     setError("");
     try {
-      await axios.post("/api/users/send-qrcode", {
-        bookingId: booking._id,
-      });
+      const token = localStorage.getItem("userToken");
+      await axios.post(
+        "/api/users/send-qrcode",
+        { bookingId: booking._id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setSuccess("Ticket resent to your email address.");
     } catch (err) {
       setError(
@@ -150,6 +153,12 @@ const MyBookings = () => {
                   </Typography>
                   <Typography variant="body2" sx={{ mb: 1 }}>
                     <strong>Location:</strong> {booking.event?.location}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Amount Paid:</strong>{" "}
+                    {booking.amountPaid
+                      ? `₹${(booking.amountPaid / 100).toLocaleString("en-IN")}`
+                      : "—"}
                   </Typography>
                   <Chip
                     label={

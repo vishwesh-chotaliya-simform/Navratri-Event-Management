@@ -60,9 +60,12 @@ const AdminDashboard = () => {
     setResendLoading(true);
     setResendMsg("");
     try {
-      const res = await axios.post("/api/users/send-qrcode", {
-        bookingId: qrBooking._id, // <-- send bookingId only
-      });
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        "/api/users/send-qrcode",
+        { bookingId: qrBooking._id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setResendMsg(res.data.message || "Ticket resent successfully.");
     } catch (err) {
       setResendMsg(
@@ -103,6 +106,7 @@ const AdminDashboard = () => {
               <TableCell>Location</TableCell>
               <TableCell>QR Code</TableCell>
               <TableCell>Checked In</TableCell>
+              <TableCell>Amount</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -148,6 +152,17 @@ const AdminDashboard = () => {
                   ) : (
                     <Typography variant="body2" color="error.main">
                       No
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {booking.amountPaid ? (
+                    <Typography>{`₹${(booking.amountPaid / 100).toLocaleString(
+                      "en-IN"
+                    )}`}</Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      —
                     </Typography>
                   )}
                 </TableCell>

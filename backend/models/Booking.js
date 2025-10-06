@@ -9,6 +9,11 @@ const bookingSchema = new mongoose.Schema({
   passQRCode: { type: String },
   isCheckedIn: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
+
+  // Payment metadata (optional)
+  orderId: { type: String }, // razorpay order id
+  paymentId: { type: String }, // razorpay payment id
+  amountPaid: { type: Number }, // amount in paisa
 });
 
 module.exports = mongoose.model("Booking", bookingSchema);

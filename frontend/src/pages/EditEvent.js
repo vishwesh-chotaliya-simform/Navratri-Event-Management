@@ -17,6 +17,7 @@ const EditEvent = () => {
     description: "",
     date: "",
     location: "",
+    price: "", // <--- added
   });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -31,6 +32,7 @@ const EditEvent = () => {
           description: event.description,
           date: event.date.slice(0, 10),
           location: event.location,
+          price: event.price || "", // set price
         });
     });
   }, [id]);
@@ -45,9 +47,13 @@ const EditEvent = () => {
     setError("");
     const token = localStorage.getItem("token");
     try {
-      await axios.put(`/api/events/${id}`, form, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.put(
+        `/api/events/${id}`,
+        { ...form, price: Number(form.price) || 0 },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       setMessage("Event updated successfully!");
       setTimeout(() => navigate("/events"), 1500);
     } catch (err) {
@@ -99,6 +105,16 @@ const EditEvent = () => {
             onChange={handleChange}
             fullWidth
             margin="normal"
+          />
+          <TextField
+            label="Price (INR)"
+            name="price"
+            type="number"
+            value={form.price}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            InputProps={{ inputProps: { min: 0 } }}
           />
           <Button
             type="submit"

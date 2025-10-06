@@ -16,6 +16,7 @@ const CreateEvent = () => {
     description: "",
     date: "",
     location: "",
+    price: "", // <--- added
   });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -31,11 +32,13 @@ const CreateEvent = () => {
     setError("");
     const token = localStorage.getItem("token");
     try {
-      await axios.post("/api/events", form, {
+      // ensure price is numeric
+      const payload = { ...form, price: Number(form.price) || 0 };
+      await axios.post("/api/events", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMessage("Event created successfully!");
-      setForm({ name: "", description: "", date: "", location: "" });
+      setForm({ name: "", description: "", date: "", location: "", price: "" });
       setTimeout(() => navigate("/admin"), 1500);
     } catch (err) {
       setError(err.response?.data?.message || "Event creation failed");
@@ -86,6 +89,17 @@ const CreateEvent = () => {
             onChange={handleChange}
             fullWidth
             margin="normal"
+          />
+          <TextField
+            label="Price (INR)"
+            name="price"
+            type="number"
+            value={form.price}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            InputProps={{ inputProps: { min: 0 } }}
+            helperText="Enter ticket price in INR"
           />
           <Button
             type="submit"

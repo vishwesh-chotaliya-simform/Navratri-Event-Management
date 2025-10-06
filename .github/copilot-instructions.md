@@ -1,85 +1,40 @@
-# Copilot Instructions for Navratri Event Management
-
-## Project Overview
-
-Full-stack event management for Navratri: user registration, event ticketing via QR code, admin dashboard, and secure check-in. Node.js/Express backend, React/MUI frontend.
-
-## Architecture & Data Flow
-
-- **Backend (`backend/`)**
-  - REST API (Express), MongoDB (Mongoose models)
-  - Models: `User` (compound index: email+event), `Event`, `Admin`
-  - Controllers: `userController.js`, `eventController.js`, `adminController.js`
-  - Middleware: `auth.js` (JWT), `role.js` (role-based access)
-  - QR code generation (`qrcode`), email delivery (`nodemailer`)
-- **Frontend (`frontend/`)**
-  - React + Material UI (theme-based, modern design)
-  - Pages: `Registration.js`, `EventList.js`, `CheckIn.js`, `AdminDashboard.js`, etc.
-  - QR code scanning: `html5-qrcode` (see `CheckIn.js`)
-  - Role-based UI: Admin features gated by JWT
-
-## Developer Workflows
-
-- **Install dependencies:**
-  - `cd backend && npm install`
-  - `cd ../frontend && npm install`
-- **Start servers:**
-  - Backend: `npm run dev` (port 5000)
-  - Frontend: `npm start` (port 3000)
-- **Environment setup:**
-  - Create `backend/.env` (see `README.md` for required variables)
-- **Debugging:**
-  - Frontend: browser devtools
-  - Backend: inspect logs, use Postman/cURL for API
-
-## Key Patterns & Conventions
-
-- **User registration:**
-  - POST `/api/users/register` with event ID; triggers QR code email
-  - Duplicate registration for same event blocked (compound index)
-- **QR code logic:**
-  - QR code encodes `PASS:<email>`
-  - Check-in via QR scan (see `CheckIn.js`), POST `/api/users/checkin`
-- **Admin dashboard:**
-  - View users/events, preview QR, resend ticket, manage events
-  - Event name links to details; QR preview does not send email
-- **Error handling:**
-  - Persistent error messages in check-in; only cleared on explicit user action
-- **Role-based access:**
-  - Admin-only routes require JWT and role check
-
-## Integration Points
-
-- **Email:** Gmail SMTP via `nodemailer` (`utils/sendMail.js`)
-- **QR Code:** Generated with `qrcode` (backend), scanned with `html5-qrcode` (frontend)
-- **MongoDB:** Models in `backend/models/`, compound index for user/event uniqueness
-
-## Examples
-
-- Register user: `userController.registerUser`, `Registration.js`
-- Check-in user: `userController.checkInUser`, `CheckIn.js`
-- Admin event management: `eventController.js`, `AdminDashboard.js`
-
-## File References
-
-- Backend: `controllers/`, `models/`, `routes/`, `middleware/`, `utils/sendMail.js`
-- Frontend: `src/pages/`, especially `CheckIn.js`, `AdminDashboard.js`
-
+---
+applyTo: "**"
 ---
 
-For questions or unclear patterns, review `README.md` or ask for clarification.
+# GitHub Copilot Instructions for Navratri Event Management
 
-## Examples
+You are working on a full-stack event management application with Node.js/Express backend and React/Material-UI frontend, featuring Razorpay payments and QR-based ticketing.
 
-- **Register user:** See `userController.registerUser` and `Registration.js`.
-- **Check-in user:** See `userController.checkInUser` and `CheckIn.js`.
-- **Admin event management:** See `eventController.js`, `AdminDashboard.js`.
+## Project Context
 
-## File References
+This is a comprehensive event booking system with:
 
-- Backend: `controllers/`, `models/`, `routes/`, `middleware/`, `utils/sendMail.js`
-- Frontend: `src/pages/`, especially `CheckIn.js`, `AdminDashboard.js`
+- User registration and authentication (JWT tokens)
+- Admin dashboard for event management
+- Razorpay payment integration for paid events
+- Server-side booking creation and QR code generation
+- Email delivery of tickets via nodemailer
+- QR scanner for event check-ins
 
----
+## Core Coding Guidelines
 
-For questions or unclear patterns, review `README.md` or ask for clarification.
+### Backend Patterns
+
+- **Payment Flow**: Always store amounts in paise (multiply INR by 100), verify Razorpay signatures server-side
+- **Authentication**: Use `req.admin` for decoded JWT payload (both users and admins), include role-based middleware
+- **Database**: Booking model links User and Event with payment metadata (orderId, paymentId, amountPaid)
+- **QR Generation**: Server-side QR contains JSON with bookingId, email, event details for scanning validation
+
+### Frontend Patterns
+
+- **Material-UI**: Use consistent styling with primary (#5c6bc0) and secondary (#ff9800) colors, 16px border radius
+- **Payment Integration**: Create order server-side → open Razorpay checkout → verify payment server-side
+- **Authentication**: Store `userToken` for users, `token` for admins in localStorage, use AuthContext
+- **Amount Display**: Divide `amountPaid` by 100 to show INR properly in UI components
+
+### Security Requirements
+
+- Never expose `RAZORPAY_KEY_SECRET` to frontend (only use `REACT_APP_RAZORPAY_KEY_ID`)
+- Implement proper error handling with user-friendly messages
+- Validate all inputs server-side and use Authorization headers

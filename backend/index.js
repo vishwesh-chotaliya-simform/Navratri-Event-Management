@@ -2,11 +2,24 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const bodyParser = require("body-parser"); // add if needed
 
 const app = express();
 app.use(cors());
+// NOTE: keep express.json() for normal routes
 app.use(express.json());
 
+// Import controller for webhook
+const userController = require("./controllers/userController");
+
+// Raw webhook endpoint (Razorpay requires raw body for signature verification)
+app.post(
+  "/api/users/webhook",
+  express.raw({ type: "application/json" }),
+  userController.razorpayWebhook
+);
+
+// Mount other routes (these expect JSON parsing)
 const userRoutes = require("./routes/userRoutes");
 app.use("/api/users", userRoutes);
 

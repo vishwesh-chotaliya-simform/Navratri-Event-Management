@@ -3,12 +3,13 @@ const Event = require("../models/Event");
 // Create a new event (admin only)
 exports.createEvent = async (req, res) => {
   try {
-    const { name, description, date, location } = req.body;
+    const { name, description, date, location, price = 0 } = req.body;
     const event = new Event({
       name,
       description,
       date,
       location,
+      price: Number(price) || 0,
       createdBy: req.admin.id,
     });
     await event.save();
