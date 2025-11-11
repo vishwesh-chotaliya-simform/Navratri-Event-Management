@@ -38,7 +38,7 @@ A comprehensive full-stack event management application built for Navratri celeb
 ## 🏗️ Project Structure
 
 ```
-navratri_event_management/
+Navratri-Event-Management/
 ├── backend/                    # Node.js/Express API Server
 │   ├── controllers/           # Route handlers & business logic
 │   │   ├── userController.js  # User, booking, payment operations
@@ -134,7 +134,7 @@ navratri_event_management/
 
 ```bash
 git clone <repository-url>
-cd navratri_event_management
+cd Navratri-Event-Management
 ```
 
 ### 2. Backend Setup
